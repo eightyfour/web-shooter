@@ -1,9 +1,14 @@
 {
+	"auth": "eightyfour",
+    	"email": "eightyfour@thinkuseful.de",
 	"name" : "web-shooter",
+	"engines": {
+	        "node": ">= v0.10.0"
+	    },
 	"version" : "0.0.1",
 	"dependencies" : {
-        "shoe" : "x",
-        "dnode" : "x",
-        "canny" : "git://github.com/eightyfour/canny.git"
+        	"shoe" : "x",
+       		"dnode" : "x",
+        	"canny" : "git://github.com/eightyfour/canny.git"
 	}
 }
