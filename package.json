@@ -1,0 +1,9 @@
+{
+	"name" : "web-shooter",
+	"version" : "0.0.1",
+	"dependencies" : {
+        "shoe" : "x",
+        "dnode" : "x",
+        "canny" : "git://github.com/eightyfour/canny.git"
+	}
+}
