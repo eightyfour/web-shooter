@@ -1,0 +1,12 @@
+{
+	"auth": "eightyfour",
+    "email": "eightyfour@thinkuseful.de",
+	"name" : "web-shooter-sample",
+	"engines": {
+	        "node": ">= v0.10.0"
+	    },
+	"version" : "0.0.1",
+	"dependencies" : {
+        "express" : "x"
+	}
+}

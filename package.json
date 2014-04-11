@@ -9,6 +9,8 @@
 	"dependencies" : {
         	"shoe" : "x",
        		"dnode" : "x",
+            "dom-opts" : "git://github.com/eightyfour/dom-opts.git",
+       		"webshot" : "x",
         	"canny" : "git://github.com/eightyfour/canny.git"
 	}
 }
