@@ -35,7 +35,9 @@ var shooter = (function () {
                 trade.takeShot({
                     url : url,
                     fileName: url + '.jpg',
-                    folderName: name
+                    category: name,
+                    srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
+                    srcBigPic : "/resources/shoots/" + name + '/big/' + url + '.jpg'
                 }, main.imgContainer.createContent);
             });
         });
@@ -47,17 +49,19 @@ var shooter = (function () {
         //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-                wrapper = document.getElementById(name + config.fileName);
+                wrapper = document.getElementById(name + '_' + config.fileName);
 
-            if (wrapper) {
-                // delete old wrapper and replace it by new one
-                wrapper.domRemove();
-            }
+            if (config) {
+                if (wrapper) {
+                    // delete old wrapper and replace it by new one
+                    wrapper.domRemove();
+                }
 
-            if (config.size === 'small') {
-                console.log('ADD IMAGE TO CONTAINER', config.fileName);
-                wrapper = domOpts.createElement('div', name + config.fileName, 'shot');
-                img.src = "/resources/shoots/" + name + '/' + config.fileName;
+                // TODO refactor duplicated code
+
+                console.log('ADD IMAGE TO CONTAINER', config);
+                wrapper = domOpts.createElement('div', name + '_' + config.fileName, 'shot');
+                img.src = config.srcPic;
                 img.onload = function () {
                     console.log('DONE IMAGE');
                 };
@@ -73,28 +77,7 @@ var shooter = (function () {
                 wrapper.appendChild(img);
                 wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
                 main.imgContainer.node.appendChild(wrapper);
-            } else {
-                wrapper = domOpts.createElement('div', name + config.fileName, 'hidden shot');
-
-                img.src = "/resources/shoots/" + name + '/' + config.fileName;
-                img.onload = function () {
-                    console.log('DONE IMAGE');
-                };
-                img.addEventListener('click', function (e) {
-                    if (wrapper.domHasClass('active')) {
-                        wrapper.domRemoveClass('active');
-                    } else {
-                        wrapper.domAddClass('active');
-                    }
-                });
-
-                wrapper.appendChild(img);
-                // TODO use custom pannel
-                // TODO fileName with big_ is passed - when creating new image with big the filename is wrong.
-                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
-                main.imgContainer.node.appendChild(wrapper);
             }
-
         };
 
 
@@ -104,6 +87,7 @@ var shooter = (function () {
     }
 
     var trade, // saves the connection
+        viewModules = {},
         res = {
             sendPicture : function (stream) {
                 console.log('GTE A NEW PICTURE', stream);
@@ -121,9 +105,13 @@ var shooter = (function () {
                     });
                 });
                 d.pipe(stream).pipe(d);
+            },
+            loadModuleScreenShoots : function () {
+                Object.keys(viewModules).forEach(function (name) {
+                    trade.getScreenShots(name, viewModules[name].imgContainer.createContent);
+                });
             }
-        },
-        viewModules = {};
+        };
 
 
     return {
@@ -133,6 +121,7 @@ var shooter = (function () {
         ready : function () {
             fc.openSocketConnection(function () {
                 console.log('Connection is open');
+                fc.loadModuleScreenShoots();
             });
         }
     };

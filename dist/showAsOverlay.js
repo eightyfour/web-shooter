@@ -7,6 +7,7 @@ var showAsOverlay = (function () {
     "use strict";
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
+        closeBtn = domOpts.createElement('div', null, 'closeButton'),
         getWindowDimension = function () {
             var width = window.innerWidth,
                 height = window.innerHeight;
@@ -15,10 +16,14 @@ var showAsOverlay = (function () {
                 h : height
             };
         },
-        orientationChange = function () {
-            var dim = getWindowDimension();
-            wrapper.width = dim.w + 'px';
-            wrapper.height = dim.h + 'px';
+        getPageHeight = function () {
+            var body = document.getElementsByTagName('body')[0],
+                html = document.getElementsByTagName('html')[0];
+                return Math.max(body.scrollHeight, body.offsetHeight,
+                    html.clientHeight, html.scrollHeight, html.offsetHeight);
+        },
+        handlePageDimensions = function () {
+            wrapper.style.height = getPageHeight() + 'px';
         },
         fadeOut = function (node, cb) {
             var opacity = node.style.opacity || 1,
@@ -71,12 +76,12 @@ var showAsOverlay = (function () {
         };
 
     wrapper.style.display = 'none';
+    wrapper.appendChild(closeBtn);
     wrapper.addEventListener('click', closeView);
-
+    closeBtn.addEventListener('click', closeView);
     canny.ready(function () {
         var body = document.getElementsByTagName('body')[0];
         body.appendChild(wrapper);
-        window.addEventListener("resize", orientationChange, false);
     });
 
     return {
@@ -85,6 +90,7 @@ var showAsOverlay = (function () {
             wrapper.domAppendChild(node);
             fadeIn(wrapper, function () {
                 console.log('WRAPPER FADE IN');
+                handlePageDimensions();
             });
         },
         close : closeView

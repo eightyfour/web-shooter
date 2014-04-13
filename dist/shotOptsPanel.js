@@ -27,16 +27,20 @@ var shotOptsPanel = (function () {
             });
             return node;
         },
-        showBig : function (elem) {
+        showBig : function (src, fileName) {
             var node = domOpts.createElement('div', null, 'showBig');
-            node.setAttribute('title', 'Show big view');
+            node.setAttribute('title', 'Show ' + fileName + ' as big peview');
             node.addEventListener('click', function () {
                 console.log('SHOW BIG');
-                var node = document.getElementById(elem),
-                    parent = node.parentNode;
+                var node = domOpts.createElement('div', null, 'imgBigWrapper'),
+                    img = new Image();
+                img.src = src;
+                node.appendChild(img);
+
                 if (node) {
                     showAsOverlay.show(node, function () {
-                        parent.appendChild(node);
+                        console.log('CLOSE BIG');
+                        node.domRemove();
                     });
                 }
             });
@@ -48,7 +52,7 @@ var shotOptsPanel = (function () {
         getPanel : function (config, trade, viewShootModule) {
             var root = domOpts.createElement('div', null, 'optPanel');
             root.appendChild(panels.linkToUrl(config));
-            root.appendChild(panels.showBig(viewShootModule.id + 'big_' + config.fileName));
+            root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
             root.appendChild(panels.reShot(config, trade, viewShootModule));
             return root;
         }

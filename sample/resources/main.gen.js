@@ -36,7 +36,9 @@ var shooter = (function () {
                 trade.takeShot({
                     url : url,
                     fileName: url + '.jpg',
-                    folderName: name
+                    category: name,
+                    srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
+                    srcBigPic : "/resources/shoots/" + name + '/big/' + url + '.jpg'
                 }, main.imgContainer.createContent);
             });
         });
@@ -45,19 +47,22 @@ var shooter = (function () {
 
         this.imgContainer = new CannyMod();
 
+        //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-                wrapper = document.getElementById(name + config.fileName);
+                wrapper = document.getElementById(name + '_' + config.fileName);
 
-            if (wrapper) {
-                // delete old wrapper and replace it by new one
-                wrapper.domRemove();
-            }
+            if (config) {
+                if (wrapper) {
+                    // delete old wrapper and replace it by new one
+                    wrapper.domRemove();
+                }
 
-            if (config.size === 'small') {
-                console.log('ADD IMAGE TO CONTAINER', config.fileName);
-                wrapper = domOpts.createElement('div', name + config.fileName, 'shot');
-                img.src = "/resources/shoots/" + name + '/' + config.fileName;
+                // TODO refactor duplicated code
+
+                console.log('ADD IMAGE TO CONTAINER', config);
+                wrapper = domOpts.createElement('div', name + '_' + config.fileName, 'shot');
+                img.src = config.srcPic;
                 img.onload = function () {
                     console.log('DONE IMAGE');
                 };
@@ -73,28 +78,7 @@ var shooter = (function () {
                 wrapper.appendChild(img);
                 wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
                 main.imgContainer.node.appendChild(wrapper);
-            } else {
-                wrapper = domOpts.createElement('div', name + config.fileName, 'hidden shot');
-
-                img.src = "/resources/shoots/" + name + '/' + config.fileName;
-                img.onload = function () {
-                    console.log('DONE IMAGE');
-                };
-                img.addEventListener('click', function (e) {
-                    if (wrapper.domHasClass('active')) {
-                        wrapper.domRemoveClass('active');
-                    } else {
-                        wrapper.domAddClass('active');
-                    }
-                });
-
-                wrapper.appendChild(img);
-                // TODO use custom pannel
-                // TODO fileName with big_ is passed - when creating new image with big the filename is wrong.
-                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
-                main.imgContainer.node.appendChild(wrapper);
             }
-
         };
 
 
@@ -104,6 +88,7 @@ var shooter = (function () {
     }
 
     var trade, // saves the connection
+        viewModules = {},
         res = {
             sendPicture : function (stream) {
                 console.log('GTE A NEW PICTURE', stream);
@@ -121,9 +106,13 @@ var shooter = (function () {
                     });
                 });
                 d.pipe(stream).pipe(d);
+            },
+            loadModuleScreenShoots : function () {
+                Object.keys(viewModules).forEach(function (name) {
+                    trade.getScreenShots(name, viewModules[name].imgContainer.createContent);
+                });
             }
-        },
-        viewModules = {};
+        };
 
 
     return {
@@ -133,6 +122,7 @@ var shooter = (function () {
         ready : function () {
             fc.openSocketConnection(function () {
                 console.log('Connection is open');
+                fc.loadModuleScreenShoots();
             });
         }
     };
@@ -169,16 +159,20 @@ var shotOptsPanel = (function () {
             });
             return node;
         },
-        showBig : function (elem) {
+        showBig : function (src, fileName) {
             var node = domOpts.createElement('div', null, 'showBig');
-            node.setAttribute('title', 'Show big view');
+            node.setAttribute('title', 'Show ' + fileName + ' as big peview');
             node.addEventListener('click', function () {
                 console.log('SHOW BIG');
-                var node = document.getElementById(elem),
-                    parent = node.parentNode;
+                var node = domOpts.createElement('div', null, 'imgBigWrapper'),
+                    img = new Image();
+                img.src = src;
+                node.appendChild(img);
+
                 if (node) {
                     showAsOverlay.show(node, function () {
-                        parent.appendChild(node);
+                        console.log('CLOSE BIG');
+                        node.domRemove();
                     });
                 }
             });
@@ -190,7 +184,7 @@ var shotOptsPanel = (function () {
         getPanel : function (config, trade, viewShootModule) {
             var root = domOpts.createElement('div', null, 'optPanel');
             root.appendChild(panels.linkToUrl(config));
-            root.appendChild(panels.showBig(viewShootModule.id + 'big_' + config.fileName));
+            root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
             root.appendChild(panels.reShot(config, trade, viewShootModule));
             return root;
         }
@@ -208,6 +202,7 @@ var showAsOverlay = (function () {
     "use strict";
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
+        closeBtn = domOpts.createElement('div', null, 'closeButton'),
         getWindowDimension = function () {
             var width = window.innerWidth,
                 height = window.innerHeight;
@@ -216,10 +211,14 @@ var showAsOverlay = (function () {
                 h : height
             };
         },
-        orientationChange = function () {
-            var dim = getWindowDimension();
-            wrapper.width = dim.w + 'px';
-            wrapper.height = dim.h + 'px';
+        getPageHeight = function () {
+            var body = document.getElementsByTagName('body')[0],
+                html = document.getElementsByTagName('html')[0];
+                return Math.max(body.scrollHeight, body.offsetHeight,
+                    html.clientHeight, html.scrollHeight, html.offsetHeight);
+        },
+        handlePageDimensions = function () {
+            wrapper.style.height = getPageHeight() + 'px';
         },
         fadeOut = function (node, cb) {
             var opacity = node.style.opacity || 1,
@@ -272,12 +271,12 @@ var showAsOverlay = (function () {
         };
 
     wrapper.style.display = 'none';
+    wrapper.appendChild(closeBtn);
     wrapper.addEventListener('click', closeView);
-
+    closeBtn.addEventListener('click', closeView);
     canny.ready(function () {
         var body = document.getElementsByTagName('body')[0];
         body.appendChild(wrapper);
-        window.addEventListener("resize", orientationChange, false);
     });
 
     return {
@@ -286,6 +285,7 @@ var showAsOverlay = (function () {
             wrapper.domAppendChild(node);
             fadeIn(wrapper, function () {
                 console.log('WRAPPER FADE IN');
+                handlePageDimensions();
             });
         },
         close : closeView
