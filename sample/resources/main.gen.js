@@ -31,10 +31,14 @@ var shooter = (function () {
         this.button = new CannyMod(function () {
             var that = this;
             this.node.addEventListener('click', function () {
-                var url = main.input.node.value;
+                var url = main.url.node.value,
+                    delay = main.delay.node.value;
+
+                console.log('DELAY:', delay);
                 // TODO CHECK IF IMAGE IS VALID
                 trade.takeShot({
                     url : url,
+                    delay: delay || 0,
                     fileName: url + '.jpg',
                     category: name,
                     srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
@@ -43,14 +47,16 @@ var shooter = (function () {
             });
         });
 
-        this.input = new CannyMod();
+        this.url = new CannyMod();
+        this.delay = new CannyMod();
 
         this.imgContainer = new CannyMod();
 
         //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-                wrapper = document.getElementById(name + '_' + config.fileName);
+            // TODO remove config.fileName is deprecated
+                wrapper = document.getElementById(config.viewId);
 
             if (config) {
                 if (wrapper) {
@@ -61,7 +67,7 @@ var shooter = (function () {
                 // TODO refactor duplicated code
 
                 console.log('ADD IMAGE TO CONTAINER', config);
-                wrapper = domOpts.createElement('div', name + '_' + config.fileName, 'shot');
+                wrapper = domOpts.createElement('div', config.viewId, 'shot');
                 img.src = config.srcPic;
                 img.onload = function () {
                     console.log('DONE IMAGE');
@@ -151,7 +157,7 @@ var shotOptsPanel = (function () {
         },
         linkToUrl : function (conf) {
             var node = domOpts.createElement('div', null, 'linkToPage'),
-                // TOOD improve http[s] check
+                // TODO improve http[s] check
                 url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
             node.setAttribute('title', 'open: ' + url);
             node.addEventListener('click', function () {
@@ -177,6 +183,23 @@ var shotOptsPanel = (function () {
                 }
             });
             return node;
+        },
+        deleteShot : function (conf, trade) {
+            var node = domOpts.createElement('div', null, 'deleteShot');
+            node.setAttribute('title', 'Delete this shot: ' + conf.url);
+            node.addEventListener('click', function () {
+                var dec = window.confirm('This shot will be deleted!\nAre you sure?');
+                if (dec) {
+                    trade.deleteShot(conf, function () {
+                        console.log('File remove success.');
+                        // TODO save config to restore deleted screen shots
+                        document.getElementById(conf.viewId).domRemove();
+                    });
+                } else {
+                    console.log('Not deleted');
+                }
+            });
+            return node;
         }
     };
 
@@ -186,6 +209,7 @@ var shotOptsPanel = (function () {
             root.appendChild(panels.linkToUrl(config));
             root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
             root.appendChild(panels.reShot(config, trade, viewShootModule));
+            root.appendChild(panels.deleteShot(config, trade));
             return root;
         }
     };

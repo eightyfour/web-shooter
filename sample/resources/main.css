@@ -1,6 +1,10 @@
+@import "gFont/SwankyandMooMoo.css";
+
+body{font-family: Swanky and Moo Moo;}
 
 .clientShooter{
     display: inline-block;
+    width: 100%;
 }
 .shot {
     position: relative;
@@ -41,6 +45,9 @@
 .optPanel .showBig{
     background-color: #00B7FF;
 }
+.optPanel .deleteShot{
+    background-color: mediumpurple;
+}
 .optPanel .linkToPage{
     background-color: lightcoral;
 }
@@ -51,14 +58,15 @@
     top: 0;
     left: 0;
     background-color: rgba(100,100,100,0.6);
-    padding: 0 30px;
 }
 #overlayWrapper > * {
     margin: 20px auto;
     display: table;
     float: none;
 }
-#overlayWrapper .shot img{width:auto;}
+#overlayWrapper .shot img{width:auto;width: 90%;
+    margin: auto;
+    display: block;}
 #overlayWrapper .closeButton{
     position: absolute;
     top: 5px;

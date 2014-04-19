@@ -7,19 +7,27 @@
     <link href="/resources/main.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
-    <h1>Shooter</h1>
 
     <div id="favorite" class="clientShooter" canny-mod="clientShooter" canny-var="favorite">
         <h2>favorites</h2>
-        <input type="text" shoot-mod="input"/>
+        <input type="text" shoot-mod="url" placeholder="Enter url"/>
+        <input type="text" shoot-mod="delay" placeholder="Enter delay"/>
         <input type="button" value="shoot" shoot-mod="button"/>
         <div shoot-mod="imgContainer" class="imgContainer"></div>
     </div>
 
+    <div id="web" class="clientShooter" canny-mod="clientShooter" canny-var="web">
+        <h2>HTML/CSS link collection</h2>
+        <input type="text" shoot-mod="url" placeholder="Enter url"/>
+        <input type="text" shoot-mod="delay" placeholder="Enter delay"/>
+        <input type="button" value="shoot" shoot-mod="button"/>
+        <div shoot-mod="imgContainer"></div>
+    </div>
 
-    <div id="work" canny-mod="clientShooter" canny-var="work">
+    <div id="work" class="clientShooter" canny-mod="clientShooter" canny-var="work">
         <h2>work</h2>
-        <input type="text" shoot-mod="input"/>
+        <input type="text" shoot-mod="url" placeholder="Enter url"/>
+        <input type="text" shoot-mod="delay" placeholder="Enter delay"/>
         <input type="button" value="shoot" shoot-mod="button"/>
         <div shoot-mod="imgContainer"></div>
     </div>

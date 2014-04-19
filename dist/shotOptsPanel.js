@@ -19,7 +19,7 @@ var shotOptsPanel = (function () {
         },
         linkToUrl : function (conf) {
             var node = domOpts.createElement('div', null, 'linkToPage'),
-                // TOOD improve http[s] check
+                // TODO improve http[s] check
                 url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
             node.setAttribute('title', 'open: ' + url);
             node.addEventListener('click', function () {
@@ -45,6 +45,23 @@ var shotOptsPanel = (function () {
                 }
             });
             return node;
+        },
+        deleteShot : function (conf, trade) {
+            var node = domOpts.createElement('div', null, 'deleteShot');
+            node.setAttribute('title', 'Delete this shot: ' + conf.url);
+            node.addEventListener('click', function () {
+                var dec = window.confirm('This shot will be deleted!\nAre you sure?');
+                if (dec) {
+                    trade.deleteShot(conf, function () {
+                        console.log('File remove success.');
+                        // TODO save config to restore deleted screen shots
+                        document.getElementById(conf.viewId).domRemove();
+                    });
+                } else {
+                    console.log('Not deleted');
+                }
+            });
+            return node;
         }
     };
 
@@ -54,6 +71,7 @@ var shotOptsPanel = (function () {
             root.appendChild(panels.linkToUrl(config));
             root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
             root.appendChild(panels.reShot(config, trade, viewShootModule));
+            root.appendChild(panels.deleteShot(config, trade));
             return root;
         }
     };

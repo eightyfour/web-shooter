@@ -30,10 +30,14 @@ var shooter = (function () {
         this.button = new CannyMod(function () {
             var that = this;
             this.node.addEventListener('click', function () {
-                var url = main.input.node.value;
+                var url = main.url.node.value,
+                    delay = main.delay.node.value;
+
+                console.log('DELAY:', delay);
                 // TODO CHECK IF IMAGE IS VALID
                 trade.takeShot({
                     url : url,
+                    delay: delay || 0,
                     fileName: url + '.jpg',
                     category: name,
                     srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
@@ -42,14 +46,16 @@ var shooter = (function () {
             });
         });
 
-        this.input = new CannyMod();
+        this.url = new CannyMod();
+        this.delay = new CannyMod();
 
         this.imgContainer = new CannyMod();
 
         //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-                wrapper = document.getElementById(name + '_' + config.fileName);
+            // TODO remove config.fileName is deprecated
+                wrapper = document.getElementById(config.viewId);
 
             if (config) {
                 if (wrapper) {
@@ -60,7 +66,7 @@ var shooter = (function () {
                 // TODO refactor duplicated code
 
                 console.log('ADD IMAGE TO CONTAINER', config);
-                wrapper = domOpts.createElement('div', name + '_' + config.fileName, 'shot');
+                wrapper = domOpts.createElement('div', config.viewId, 'shot');
                 img.src = config.srcPic;
                 img.onload = function () {
                     console.log('DONE IMAGE');
