@@ -2,7 +2,7 @@
 var canny = require('canny'),
     shoe = require('shoe'),
     domOpts = require('dom-opts'),
-    shotOptsPanel = require('./shotOptsPanel.js'),
+    singleOptsPanel = require('./singleOptsPanel.js'),
     dnode = require('dnode');
 
 var stream = shoe('/shoot');
@@ -57,11 +57,7 @@ var shooter = (function () {
             selectionHandler.handleEvent(cannyMod);
         });
         cannyMod.node.addEventListener('focus', function (e) {
-//            e.preventDefault();
-
-            console.log('HAS FOCUS');
             selectionHandler.handleEvent(cannyMod);
-
         });
     }
 
@@ -73,18 +69,22 @@ var shooter = (function () {
             var that = this;
             this.node.addEventListener('click', function () {
                 var url = main.url.node.value,
+                    desc = main.desc.node.value,
                     delay = main.delay.node.value;
 
-                console.log('DELAY:', delay);
-                // TODO CHECK IF IMAGE IS VALID
+                // TODO CHECK IF IMAGE/URL IS VALID
                 trade.takeShot({
                     url : url,
+                    desc: desc || null,
                     delay: delay || 0,
                     fileName: url + '.jpg',
                     category: name,
                     srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
                     srcBigPic : "/resources/shoots/" + name + '/big/' + url + '.jpg'
-                }, main.imgContainer.createContent);
+                }, function (config) {
+                    main.imgContainer.createContent(config);
+                    canny.coverFlow.init(viewModules[name].imgContainer.node, {showLast: true});
+                });
             });
         });
 
@@ -105,7 +105,6 @@ var shooter = (function () {
         //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-            // TODO remove config.fileName is deprecated
                 wrapper = document.getElementById(config.viewId);
 
             if (config) {
@@ -113,8 +112,6 @@ var shooter = (function () {
                     // delete old wrapper and replace it by new one
                     wrapper.domRemove();
                 }
-
-                // TODO refactor duplicated code
 
                 console.log('ADD IMAGE TO CONTAINER', config);
                 wrapper = domOpts.createElement('div', config.viewId, 'shot');
@@ -124,17 +121,31 @@ var shooter = (function () {
                 };
 
                 img.addEventListener('click', function (e) {
-                    if (wrapper.domHasClass('active')) {
-                        wrapper.domRemoveClass('active');
-                    } else {
-                        wrapper.domAddClass('active');
-                    }
+                    console.log('CLICK: ');
+//                    if (wrapper.domHasClass('active')) {
+//                        wrapper.domRemoveClass('active');
+//                    } else {
+//                        wrapper.domAddClass('active');
+//                    }
                 });
 
                 wrapper.appendChild(img);
+                wrapper.addEventListener('coverFlowActive', function () {
+                    console.log('coverFlowActive', config);
+                    main.navigationController.showDescription(config);
+                });
 //                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
                 main.imgContainer.node.appendChild(wrapper);
             }
+        };
+
+        this.navigationController = new CannyMod();
+        this.navigationController.showDescription = function (config) {
+            main.navigationController.node.domEmpty();
+            main.navigationController.node.appendChild(singleOptsPanel.getPanel(config, {
+                deleteShot : function () {fc.deleteShot(config, main); },
+                takeShot : function () {fc.takeShot(config, main); }
+            }));
         };
 
 
@@ -151,6 +162,17 @@ var shooter = (function () {
             }
         },
         fc = {
+            takeShot : function (config, viewShootModule) {
+                trade.takeShot(config, viewShootModule.imgContainer.createContent);
+            },
+            deleteShot : function (config, viewShootModule) {
+                trade.deleteShot(config, function () {
+                    console.log('File remove success.');
+                    // TODO save config to restore deleted screen shots
+                    document.getElementById(config.viewId).domRemove();
+                    canny.coverFlow.init(viewShootModule.imgContainer.node);
+                });
+            },
             openSocketConnection : function (cb) {
                 // open connection
                 d.on('remote', function (server) {
@@ -187,88 +209,7 @@ var shooter = (function () {
 }());
 
 module.exports = shooter;
-},{"./shotOptsPanel.js":2,"canny":4,"dnode":5,"dom-opts":16,"shoe":17}],2:[function(require,module,exports){
-var domOpts = require('dom-opts'),
-    showAsOverlay = require('./showAsOverlay.js');
-
-/**
- * Canny module shooter
- */
-var shotOptsPanel = (function () {
-    "use strict";
-
-    var panels = {
-        reShot : function (initObj, trade, viewShootModule) {
-            // TOOD clean up container first
-            var node = domOpts.createElement('div', null, 'reShot');
-            node.setAttribute('title', 'Take shot again: ');
-            node.addEventListener('click', function () {
-                trade.takeShot(initObj, viewShootModule.imgContainer.createContent);
-            });
-            return node;
-        },
-        linkToUrl : function (conf) {
-            var node = domOpts.createElement('div', null, 'linkToPage'),
-                // TODO improve http[s] check
-                url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
-            node.setAttribute('title', 'open: ' + url);
-            node.addEventListener('click', function () {
-                window.open(url, '_blank');
-            });
-            return node;
-        },
-        showBig : function (src, fileName) {
-            var node = domOpts.createElement('div', null, 'showBig');
-            node.setAttribute('title', 'Show ' + fileName + ' as big peview');
-            node.addEventListener('click', function () {
-                console.log('SHOW BIG');
-                var node = domOpts.createElement('div', null, 'imgBigWrapper'),
-                    img = new Image();
-                img.src = src;
-                node.appendChild(img);
-
-                if (node) {
-                    showAsOverlay.show(node, function () {
-                        console.log('CLOSE BIG');
-                        node.domRemove();
-                    });
-                }
-            });
-            return node;
-        },
-        deleteShot : function (conf, trade) {
-            var node = domOpts.createElement('div', null, 'deleteShot');
-            node.setAttribute('title', 'Delete this shot: ' + conf.url);
-            node.addEventListener('click', function () {
-                var dec = window.confirm('This shot will be deleted!\nAre you sure?');
-                if (dec) {
-                    trade.deleteShot(conf, function () {
-                        console.log('File remove success.');
-                        // TODO save config to restore deleted screen shots
-                        document.getElementById(conf.viewId).domRemove();
-                    });
-                } else {
-                    console.log('Not deleted');
-                }
-            });
-            return node;
-        }
-    };
-
-    return {
-        getPanel : function (config, trade, viewShootModule) {
-            var root = domOpts.createElement('div', null, 'optPanel');
-            root.appendChild(panels.linkToUrl(config));
-            root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
-            root.appendChild(panels.reShot(config, trade, viewShootModule));
-            root.appendChild(panels.deleteShot(config, trade));
-            return root;
-        }
-    };
-}());
-
-module.exports = shotOptsPanel;
-},{"./showAsOverlay.js":3,"dom-opts":16}],3:[function(require,module,exports){
+},{"./singleOptsPanel.js":3,"canny":4,"dnode":5,"dom-opts":16,"shoe":17}],2:[function(require,module,exports){
 /**
  * Created by han on 11.04.14.
  */
@@ -278,7 +219,7 @@ var showAsOverlay = (function () {
     "use strict";
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
-        closeBtn = domOpts.createElement('div', null, 'closeButton'),
+        closeBtn = domOpts.createElement('div', null, 'closeButton octicon octicon-remove-close'),
         getWindowDimension = function () {
             var width = window.innerWidth,
                 height = window.innerHeight;
@@ -369,7 +310,104 @@ var showAsOverlay = (function () {
 }());
 
 module.exports = showAsOverlay;
-},{"canny":4,"dom-opts":16}],4:[function(require,module,exports){
+},{"canny":4,"dom-opts":16}],3:[function(require,module,exports){
+var domOpts = require('dom-opts'),
+    showAsOverlay = require('./showAsOverlay.js');
+
+/**
+ * Canny module shooter
+ */
+var singleOptsPanel = (function () {
+    "use strict";
+
+    var panels = {
+        reShot : function (initObj, cbFuntions) {
+            // TOOD clean up container first
+            var node = domOpts.createElement('div', null, 'reShot octicon octicon-issue-reopened');
+            node.setAttribute('title', 'Take shot again: ');
+            node.addEventListener('click', function () {
+                cbFuntions.takeShot();
+            });
+            return node;
+        },
+        showURL : function (conf) {
+            var p = domOpts.createElement('p', null, 'showURL'),
+                a = domOpts.createElement('a'),
+                span = domOpts.createElement('span'),
+            // TODO improve http[s] check
+                url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
+            a.setAttribute('title', 'open: ' + url);
+            a.addEventListener('click', function () {
+                window.open(url, '_blank');
+            });
+            a.innerHTML = url;
+            p.appendChild(a);
+            if (conf.desc) {
+                span.innerHTML = conf.desc;
+                p.appendChild(domOpts.createElement('br'));
+                p.appendChild(span);
+            }
+            return p;
+        },
+        linkToUrl : function (conf) {
+            var node = domOpts.createElement('div', null, 'linkToPage octicon octicon-link-external'),
+            // TODO improve http[s] check
+                url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
+            node.setAttribute('title', 'open: ' + url);
+            node.addEventListener('click', function () {
+                window.open(url, '_blank');
+            });
+            return node;
+        },
+        showBig : function (src, fileName) {
+            var node = domOpts.createElement('div', null, 'showBig octicon octicon-screen-full');
+            node.setAttribute('title', 'Show ' + fileName + ' as big peview');
+            node.addEventListener('click', function () {
+                console.log('SHOW BIG');
+                var node = domOpts.createElement('div', null, 'imgBigWrapper'),
+                    img = new Image();
+                img.src = src;
+                node.appendChild(img);
+
+                if (node) {
+                    showAsOverlay.show(node, function () {
+                        console.log('CLOSE BIG');
+                        node.domRemove();
+                    });
+                }
+            });
+            return node;
+        },
+        deleteShot : function (conf, cbFuntions) {
+            var node = domOpts.createElement('div', null, 'deleteShot octicon octicon-diff-removed');
+            node.setAttribute('title', 'Delete this shot: ' + conf.url);
+            node.addEventListener('click', function () {
+                var dec = window.confirm('This shot will be deleted!\nAre you sure?');
+                if (dec) {
+                    cbFuntions.deleteShot();
+                } else {
+                    console.log('Not deleted');
+                }
+            });
+            return node;
+        }
+    };
+
+    return {
+        getPanel : function (config, cbFuntions) {
+            var root = domOpts.createElement('div', null, 'optPanel');
+            root.appendChild(panels.deleteShot(config, cbFuntions));
+            root.appendChild(panels.reShot(config, cbFuntions));
+            root.appendChild(panels.showURL(config));
+            root.appendChild(panels.showBig(config.srcBigPic, config.fileName));
+            root.appendChild(panels.linkToUrl(config));
+            return root;
+        }
+    };
+}());
+
+module.exports = singleOptsPanel;
+},{"./showAsOverlay.js":2,"dom-opts":16}],4:[function(require,module,exports){
 /*global */
 /*jslint browser: true*/
 (function (global) {
@@ -1683,6 +1721,15 @@ HTMLElement.prototype.domHasClass = function (className) {
 HTMLElement.prototype.domRemove = function () {
     "use strict";
     this.parentNode.removeChild(this);
+};
+/**
+ * remove all child elements from node
+ */
+HTMLElement.prototype.domEmpty = function () {
+    "use strict";
+    Array.prototype.slice.call(this.children).forEach(function (child) {
+        child.domRemove(this);
+    });
 };
 
 HTMLElement.prototype.domAppendTo = function (elem) {
@@ -4112,22 +4159,34 @@ module.exports =  (function () {
 
     var count, nodes, dim, offset, center, angle, dist, shift,
         pressed, reference, amplitude, target, velocity, timeConstant,
-        xform, frame, timestamp, ticker;
+        xform, frame, timestamp, ticker, view;
 
-    function initialize(node) {
+    var focusFCs = [];
+
+    var coverFlowEvent = new CustomEvent("coverFlowActive", {
+            detail: {},
+            bubbles: false,
+            cancelable: true
+        });
+
+    function initialize(node, obj) {
+        offset = target = 0;
+        nodes = [].slice.call(node.children);
+        count = nodes.length;
+        dim = 200;
+        if (obj.showLast) {
+            offset = target = (count - 1) * dim;
+        }
+        view = node;
         pressed = false;
         timeConstant = 250; // ms
-        dim = 200;
-        offset = target = 0;
         angle = -60;
         dist = -150;
         shift = 10;
-        nodes = [].slice.call(node.children);
-        count = nodes.length;
     }
 
     function setupEvents() {
-        var view = document.getElementById('content');
+//        var view = document.getElementById('content');
         if (typeof window.ontouchstart !== 'undefined') {
             view.addEventListener('touchstart', tap);
             view.addEventListener('touchmove', drag);
@@ -4136,6 +4195,7 @@ module.exports =  (function () {
         view.addEventListener('mousedown', tap);
         view.addEventListener('mousemove', drag);
         view.addEventListener('mouseup', release);
+        // arrows left and right can
         document.addEventListener('keydown', handleKey);
     }
 
@@ -4206,6 +4266,10 @@ module.exports =  (function () {
             ' rotateY(' + (dir * angle * tween) + 'deg)';
         el.style.zIndex = 0;
         el.style.opacity = 1;
+
+        if ((dist * tween) === 0) {
+            el.dispatchEvent(coverFlowEvent);
+        }
     }
 
     function track() {
@@ -4307,7 +4371,7 @@ module.exports =  (function () {
 
 
     return {
-        init : function (node) {
+        init : function (node, obj) {
             xform = 'transform';
             ['webkit', 'Moz', 'O', 'ms'].every(function (prefix) {
                 var e = prefix + 'Transform';
@@ -4319,9 +4383,13 @@ module.exports =  (function () {
             });
 
             window.onresize = scroll;
-            initialize(node);
+            initialize(node, obj || {});
             setupEvents();
             scroll(offset);
+        },
+        srcollToIdx : scroll,
+        onActive : function (fc) {
+            focusFCs.push(fc);
         }
     };
 }());

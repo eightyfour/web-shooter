@@ -7,7 +7,7 @@ var showAsOverlay = (function () {
     "use strict";
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
-        closeBtn = domOpts.createElement('div', null, 'closeButton'),
+        closeBtn = domOpts.createElement('div', null, 'closeButton octicon octicon-remove-close'),
         getWindowDimension = function () {
             var width = window.innerWidth,
                 height = window.innerHeight;

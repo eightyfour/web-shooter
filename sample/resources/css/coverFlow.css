@@ -1,3 +1,4 @@
+@import "gFont/SwankyandMooMoo.css";
 @font-face {
   font-family: 'octicons';
   src: url("octicons.eot");
@@ -624,6 +625,9 @@
 .octicon-zap:before {
   content: '\26A1';
 }
+body {
+  font-family: Swanky and Moo Moo;
+}
 /* ==========================================================================
    NORMALIZE STUFF
    ========================================================================== */
@@ -845,14 +849,89 @@ aside {
   padding: 0.6em 1em;
   color: #fff;
 }
+.clientShooter {
+  display: inline-block;
+  width: 100%;
+}
 #content {
   margin: auto;
   overflow: hidden;
   width: 100%;
-  height: 300px;
+  height: 200px;
   position: absolute;
   top: 100px;
   left: 0px;
+}
+#content .shot img {
+  width: 200px;
+}
+#overlayWrapper {
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  background-color: rgba(100, 100, 100, 0.6);
+}
+#overlayWrapper > * {
+  margin: 20px auto;
+  display: table;
+  float: none;
+}
+#overlayWrapper .shot img {
+  width: auto;
+  width: 90%;
+  margin: auto;
+  display: block;
+}
+#overlayWrapper .closeButton {
+  position: absolute;
+  top: 5px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  font-size: 50px;
+}
+#navigationController {
+  position: absolute;
+  margin: auto;
+  bottom: 10px;
+  text-align: center;
+  width: 100%;
+  -webkit-transition: all 1s;
+  -moz-transition: all 1s;
+  -ms-transition: all 1s;
+  -o-transition: all 1s;
+  transition: all 1s;
+}
+#navigationController .optPanel > div {
+  float: right;
+  width: 50px;
+  height: 50px;
+  margin-right: 10px;
+  font-size: 48px;
+  line-height: 50px;
+  margin: auto 10px;
+  z-index: 1;
+  position: relative;
+}
+#navigationController .optPanel .reShot {
+  float: left;
+}
+#navigationController .optPanel .deleteShot {
+  float: left;
+}
+#navigationController .optPanel .showURL {
+  font-size: 100%;
+  float: left;
+  width: 100%;
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  line-height: 25px;
+}
+#navigationController .optPanel .showURL a {
+  cursor: pointer;
 }
 #view table {
   display: table;

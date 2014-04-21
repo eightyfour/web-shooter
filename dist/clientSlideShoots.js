@@ -1,7 +1,7 @@
 var canny = require('canny'),
     shoe = require('shoe'),
     domOpts = require('dom-opts'),
-    shotOptsPanel = require('./shotOptsPanel.js'),
+    singleOptsPanel = require('./singleOptsPanel.js'),
     dnode = require('dnode');
 
 var stream = shoe('/shoot');
@@ -56,11 +56,7 @@ var shooter = (function () {
             selectionHandler.handleEvent(cannyMod);
         });
         cannyMod.node.addEventListener('focus', function (e) {
-//            e.preventDefault();
-
-            console.log('HAS FOCUS');
             selectionHandler.handleEvent(cannyMod);
-
         });
     }
 
@@ -72,18 +68,22 @@ var shooter = (function () {
             var that = this;
             this.node.addEventListener('click', function () {
                 var url = main.url.node.value,
+                    desc = main.desc.node.value,
                     delay = main.delay.node.value;
 
-                console.log('DELAY:', delay);
-                // TODO CHECK IF IMAGE IS VALID
+                // TODO CHECK IF IMAGE/URL IS VALID
                 trade.takeShot({
                     url : url,
+                    desc: desc || null,
                     delay: delay || 0,
                     fileName: url + '.jpg',
                     category: name,
                     srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
                     srcBigPic : "/resources/shoots/" + name + '/big/' + url + '.jpg'
-                }, main.imgContainer.createContent);
+                }, function (config) {
+                    main.imgContainer.createContent(config);
+                    canny.coverFlow.init(viewModules[name].imgContainer.node, {showLast: true});
+                });
             });
         });
 
@@ -104,7 +104,6 @@ var shooter = (function () {
         //TODO has problems with question marks (?). Fix it!
         this.imgContainer.createContent = function (config) {
             var img = new Image(),
-            // TODO remove config.fileName is deprecated
                 wrapper = document.getElementById(config.viewId);
 
             if (config) {
@@ -112,8 +111,6 @@ var shooter = (function () {
                     // delete old wrapper and replace it by new one
                     wrapper.domRemove();
                 }
-
-                // TODO refactor duplicated code
 
                 console.log('ADD IMAGE TO CONTAINER', config);
                 wrapper = domOpts.createElement('div', config.viewId, 'shot');
@@ -123,17 +120,31 @@ var shooter = (function () {
                 };
 
                 img.addEventListener('click', function (e) {
-                    if (wrapper.domHasClass('active')) {
-                        wrapper.domRemoveClass('active');
-                    } else {
-                        wrapper.domAddClass('active');
-                    }
+                    console.log('CLICK: ');
+//                    if (wrapper.domHasClass('active')) {
+//                        wrapper.domRemoveClass('active');
+//                    } else {
+//                        wrapper.domAddClass('active');
+//                    }
                 });
 
                 wrapper.appendChild(img);
+                wrapper.addEventListener('coverFlowActive', function () {
+                    console.log('coverFlowActive', config);
+                    main.navigationController.showDescription(config);
+                });
 //                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
                 main.imgContainer.node.appendChild(wrapper);
             }
+        };
+
+        this.navigationController = new CannyMod();
+        this.navigationController.showDescription = function (config) {
+            main.navigationController.node.domEmpty();
+            main.navigationController.node.appendChild(singleOptsPanel.getPanel(config, {
+                deleteShot : function () {fc.deleteShot(config, main); },
+                takeShot : function () {fc.takeShot(config, main); }
+            }));
         };
 
 
@@ -150,6 +161,17 @@ var shooter = (function () {
             }
         },
         fc = {
+            takeShot : function (config, viewShootModule) {
+                trade.takeShot(config, viewShootModule.imgContainer.createContent);
+            },
+            deleteShot : function (config, viewShootModule) {
+                trade.deleteShot(config, function () {
+                    console.log('File remove success.');
+                    // TODO save config to restore deleted screen shots
+                    document.getElementById(config.viewId).domRemove();
+                    canny.coverFlow.init(viewShootModule.imgContainer.node);
+                });
+            },
             openSocketConnection : function (cb) {
                 // open connection
                 d.on('remote', function (server) {

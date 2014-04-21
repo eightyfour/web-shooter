@@ -4,22 +4,32 @@ module.exports =  (function () {
 
     var count, nodes, dim, offset, center, angle, dist, shift,
         pressed, reference, amplitude, target, velocity, timeConstant,
-        xform, frame, timestamp, ticker;
+        xform, frame, timestamp, ticker, view;
 
-    function initialize(node) {
+    var coverFlowEvent = new CustomEvent("coverFlowActive", {
+            detail: {},
+            bubbles: false,
+            cancelable: true
+        });
+
+    function initialize(node, obj) {
+        offset = target = 0;
+        nodes = [].slice.call(node.children);
+        count = nodes.length;
+        dim = 200;
+        if (obj.showLast) {
+            offset = target = (count - 1) * dim;
+        }
+        view = node;
         pressed = false;
         timeConstant = 250; // ms
-        dim = 200;
-        offset = target = 0;
         angle = -60;
         dist = -150;
         shift = 10;
-        nodes = [].slice.call(node.children);
-        count = nodes.length;
     }
 
     function setupEvents() {
-        var view = document.getElementById('content');
+//        var view = document.getElementById('content');
         if (typeof window.ontouchstart !== 'undefined') {
             view.addEventListener('touchstart', tap);
             view.addEventListener('touchmove', drag);
@@ -28,6 +38,7 @@ module.exports =  (function () {
         view.addEventListener('mousedown', tap);
         view.addEventListener('mousemove', drag);
         view.addEventListener('mouseup', release);
+        // arrows left and right can
         document.addEventListener('keydown', handleKey);
     }
 
@@ -98,6 +109,10 @@ module.exports =  (function () {
             ' rotateY(' + (dir * angle * tween) + 'deg)';
         el.style.zIndex = 0;
         el.style.opacity = 1;
+
+        if ((dist * tween) === 0) {
+            el.dispatchEvent(coverFlowEvent);
+        }
     }
 
     function track() {
@@ -199,7 +214,7 @@ module.exports =  (function () {
 
 
     return {
-        init : function (node) {
+        init : function (node, obj) {
             xform = 'transform';
             ['webkit', 'Moz', 'O', 'ms'].every(function (prefix) {
                 var e = prefix + 'Transform';
@@ -211,7 +226,7 @@ module.exports =  (function () {
             });
 
             window.onresize = scroll;
-            initialize(node);
+            initialize(node, obj || {});
             setupEvents();
             scroll(offset);
         }
