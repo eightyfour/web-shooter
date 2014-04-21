@@ -1,8 +1,10 @@
 var canny = require('canny');
 
+
 window.canny = canny;
 
-canny.add('clientShooter', require('../../dist/clientShoots.js'));
+canny.add('coverFlow', require('./js/coverFlow.js'));
+canny.add('clientShooter', require('../../dist/clientSlideShoots.js'));
 
 
 canny.ready(function () {

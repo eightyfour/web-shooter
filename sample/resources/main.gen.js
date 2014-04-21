@@ -17,11 +17,52 @@ var shooter = (function () {
     function CannyMod(fc) {
         var that = this;
         this.node = null;
+        this.parent = null;
         this.add = function (node) {
             console.log('INIT CannyMod', node);
             that.node = node;
+            that.parent = node.parentNode.parentNode;
             fc && fc.call(that);
         };
+    }
+
+    var selectionHandler = (function (e) {
+        var cannyMods = [];
+
+        return {
+            addViewSection : function (cannyMod) {
+                cannyMods.push(cannyMod);
+            },
+            handleEvent : function (cannyMod) {
+                console.log('HANDLE EVENT', cannyMod);
+                if (cannyMod.parent.domHasClass('active')) {
+                    return;
+                }
+
+                cannyMods.forEach(function (cMod) {
+                    var inputClass = !cMod.node.value ? 'empty' : 'checked';
+                    cMod.parent.classList.add(inputClass);
+                    cMod.parent.classList.remove('active');
+                });
+
+                cannyMod.parent.classList.add('active');
+                cannyMod.parent.classList.remove('empty');
+            }
+        };
+    }());
+
+    function addOnFocusHandler(cannyMod) {
+        selectionHandler.addViewSection(cannyMod);
+        cannyMod.node.parentNode.parentNode.addEventListener('click', function () {
+            selectionHandler.handleEvent(cannyMod);
+        });
+        cannyMod.node.addEventListener('focus', function (e) {
+//            e.preventDefault();
+
+            console.log('HAS FOCUS');
+            selectionHandler.handleEvent(cannyMod);
+
+        });
     }
 
     function ViewShootModule(node, name) {
@@ -47,8 +88,17 @@ var shooter = (function () {
             });
         });
 
-        this.url = new CannyMod();
-        this.delay = new CannyMod();
+        this.url = new CannyMod(function () {
+            addOnFocusHandler(this);
+        });
+
+        this.delay = new CannyMod(function () {
+            addOnFocusHandler(this);
+        });
+
+        this.desc = new CannyMod(function () {
+            addOnFocusHandler(this);
+        });
 
         this.imgContainer = new CannyMod();
 
@@ -82,7 +132,7 @@ var shooter = (function () {
                 });
 
                 wrapper.appendChild(img);
-                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
+//                wrapper.appendChild(shotOptsPanel.getPanel(config, trade, main));
                 main.imgContainer.node.appendChild(wrapper);
             }
         };
@@ -115,7 +165,9 @@ var shooter = (function () {
             },
             loadModuleScreenShoots : function () {
                 Object.keys(viewModules).forEach(function (name) {
-                    trade.getScreenShots(name, viewModules[name].imgContainer.createContent);
+                    trade.getScreenShots(name, viewModules[name].imgContainer.createContent, function () {
+                        canny.coverFlow.init(viewModules[name].imgContainer.node);
+                    });
                 });
             }
         };
@@ -570,7 +622,7 @@ dnode.prototype.destroy = function () {
     this.end();
 };
 
-},{"__browserify_process":22,"dnode-protocol":7,"jsonify":13,"stream":31}],7:[function(require,module,exports){
+},{"__browserify_process":23,"dnode-protocol":7,"jsonify":13,"stream":32}],7:[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter;
 var scrubber = require('./lib/scrub');
 var objectKeys = require('./lib/keys');
@@ -697,7 +749,7 @@ Proto.prototype.apply = function (f, args) {
     catch (err) { this.emit('error', err) }
 };
 
-},{"./lib/foreach":8,"./lib/is_enum":9,"./lib/keys":10,"./lib/scrub":11,"events":20}],8:[function(require,module,exports){
+},{"./lib/foreach":8,"./lib/is_enum":9,"./lib/keys":10,"./lib/scrub":11,"events":21}],8:[function(require,module,exports){
 module.exports = function forEach (xs, f) {
     if (xs.forEach) return xs.forEach(f)
     for (var i = 0; i < xs.length; i++) {
@@ -1728,7 +1780,7 @@ module.exports = function (u, cb) {
     return stream;
 };
 
-},{"sockjs-client":18,"stream":31,"url":38}],18:[function(require,module,exports){
+},{"sockjs-client":18,"stream":32,"url":39}],18:[function(require,module,exports){
 /* SockJS client, version 0.3.1.7.ga67f.dirty, http://sockjs.org, MIT License
 
 Copyright (c) 2011-2012 VMware, Inc.
@@ -4054,18 +4106,285 @@ if (typeof module === 'object' && module && module.exports) {
 
 
 },{}],19:[function(require,module,exports){
+
+module.exports =  (function () {
+    'use strict';
+
+    var count, nodes, dim, offset, center, angle, dist, shift,
+        pressed, reference, amplitude, target, velocity, timeConstant,
+        xform, frame, timestamp, ticker;
+
+    function initialize(node) {
+        pressed = false;
+        timeConstant = 250; // ms
+        dim = 200;
+        offset = target = 0;
+        angle = -60;
+        dist = -150;
+        shift = 10;
+        nodes = [].slice.call(node.children);
+        count = nodes.length;
+    }
+
+    function setupEvents() {
+        var view = document.getElementById('content');
+        if (typeof window.ontouchstart !== 'undefined') {
+            view.addEventListener('touchstart', tap);
+            view.addEventListener('touchmove', drag);
+            view.addEventListener('touchend', release);
+        }
+        view.addEventListener('mousedown', tap);
+        view.addEventListener('mousemove', drag);
+        view.addEventListener('mouseup', release);
+        document.addEventListener('keydown', handleKey);
+    }
+
+    function xpos(e) {
+        // touch event
+        if (e.targetTouches && (e.targetTouches.length >= 1)) {
+            return e.targetTouches[0].clientX;
+        }
+
+        // mouse event
+        return e.clientX;
+    }
+
+    function wrap(x) {
+        return (x >= count) ? (x % count) : (x < 0) ? wrap(count + (x % count)) : x;
+    }
+
+    function scroll(x) {
+        var i, half, delta, dir, tween, el, alignment;
+
+        offset = (typeof x === 'number') ? x : offset;
+        center = Math.floor((offset + dim / 2) / dim);
+        delta = offset - center * dim;
+        dir = (delta < 0) ? 1 : -1;
+        tween = -dir * delta * 2 / dim;
+
+        alignment = 'translateX(' + (innerWidth - dim) / 2 + 'px) ';
+//        alignment += 'translateY(' + (innerHeight - dim) / 2 + 'px)';
+        alignment += 'translateY(0)';
+
+        // center
+        el = nodes[wrap(center)];
+        el.style[xform] = alignment +
+            ' translateX(' + (-delta / 2) + 'px)' +
+            ' translateX(' + (dir * shift * tween) + 'px)' +
+            ' translateZ(' + (dist * tween) + 'px)' +
+            ' rotateY(' + (dir * angle * tween) + 'deg)';
+        el.style.zIndex = 0;
+        el.style.opacity = 1;
+
+        half = count >> 1;
+        for (i = 1; i <= half; ++i) {
+            // right side
+            el = nodes[wrap(center + i)];
+            el.style[xform] = alignment +
+                ' translateX(' + (shift + (dim * i - delta) / 2) + 'px)' +
+                ' translateZ(' + dist + 'px)' +
+                ' rotateY(' + angle + 'deg)';
+            el.style.zIndex = -i;
+            el.style.opacity = (i === half && delta < 0) ? 1 - tween : 1;
+
+            // left side
+            el = nodes[wrap(center - i)];
+            el.style[xform] = alignment +
+                ' translateX(' + (-shift + (-dim * i - delta) / 2) + 'px)' +
+                ' translateZ(' + dist + 'px)' +
+                ' rotateY(' + -angle + 'deg)';
+            el.style.zIndex = -i;
+            el.style.opacity = (i === half && delta > 0) ? 1 - tween : 1;
+        }
+
+        // center
+        el = nodes[wrap(center)];
+        el.style[xform] = alignment +
+            ' translateX(' + (-delta / 2) + 'px)' +
+            ' translateX(' + (dir * shift * tween) + 'px)' +
+            ' translateZ(' + (dist * tween) + 'px)' +
+            ' rotateY(' + (dir * angle * tween) + 'deg)';
+        el.style.zIndex = 0;
+        el.style.opacity = 1;
+    }
+
+    function track() {
+        var now, elapsed, delta, v;
+
+        now = Date.now();
+        elapsed = now - timestamp;
+        timestamp = now;
+        delta = offset - frame;
+        frame = offset;
+
+        v = 1000 * delta / (1 + elapsed);
+        velocity = 0.8 * v + 0.2 * velocity;
+    }
+
+    function autoScroll() {
+        var elapsed, delta;
+
+        if (amplitude) {
+            elapsed = Date.now() - timestamp;
+            delta = amplitude * Math.exp(-elapsed / timeConstant);
+            if (delta > 4 || delta < -4) {
+                scroll(target - delta);
+                requestAnimationFrame(autoScroll);
+            } else {
+                scroll(target);
+            }
+        }
+    }
+
+    function tap(e) {
+        pressed = true;
+        reference = xpos(e);
+
+        velocity = amplitude = 0;
+        frame = offset;
+        timestamp = Date.now();
+        clearInterval(ticker);
+        ticker = setInterval(track, 100);
+
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+
+    function drag(e) {
+        var x, delta;
+        if (pressed) {
+            x = xpos(e);
+            delta = reference - x;
+            if (delta > 2 || delta < -2) {
+                reference = x;
+                scroll(offset + delta);
+            }
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+
+    function release(e) {
+        pressed = false;
+
+        clearInterval(ticker);
+        target = offset;
+        if (velocity > 10 || velocity < -10) {
+            amplitude = 0.9 * velocity;
+            target = offset + amplitude;
+        }
+        target = Math.round(target / dim) * dim;
+        amplitude = target - offset;
+        timestamp = Date.now();
+        requestAnimationFrame(autoScroll);
+
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+
+    function handleKey(e) {
+        if (!pressed && (target === offset)) {
+            // Space or PageDown or RightArrow or DownArrow
+            if ([32, 34, 39, 40].indexOf(e.which) >= 0) {
+                target = offset + dim;
+            }
+            // PageUp or LeftArrow or UpArrow
+            if ([33, 37, 38].indexOf(e.which) >= 0) {
+                target = offset - dim;
+            }
+            if (offset !== target) {
+                amplitude = target - offset;
+                timestamp = Date.now();
+                requestAnimationFrame(autoScroll);
+                return true;
+            }
+        }
+    }
+
+
+
+    return {
+        init : function (node) {
+            xform = 'transform';
+            ['webkit', 'Moz', 'O', 'ms'].every(function (prefix) {
+                var e = prefix + 'Transform';
+                if (typeof document.body.style[e] !== 'undefined') {
+                    xform = e;
+                    return false;
+                }
+                return true;
+            });
+
+            window.onresize = scroll;
+            initialize(node);
+            setupEvents();
+            scroll(offset);
+        }
+    };
+}());
+
+/*
+ * raf.js
+ * https://github.com/ngryman/raf.js
+ *
+ * original requestAnimationFrame polyfill by Erik Möller
+ * inspired from paul_irish gist and post
+ *
+ * Copyright (c) 2013 ngryman
+ * Licensed under the MIT license.
+ */
+
+(function (window) {
+    "use strict";
+    var lastTime = 0,
+        vendors = ['webkit', 'moz'],
+        requestAnimationFrame = window.requestAnimationFrame,
+        cancelAnimationFrame = window.cancelAnimationFrame,
+        i = vendors.length;
+
+    // try to un-prefix existing raf
+    while (--i >= 0 && !requestAnimationFrame) {
+        requestAnimationFrame = window[vendors[i] + 'RequestAnimationFrame'];
+        cancelAnimationFrame = window[vendors[i] + 'CancelRequestAnimationFrame'];
+    }
+
+    // polyfill with setTimeout fallback
+    // heavily inspired from @darius gist mod: https://gist.github.com/paulirish/1579671#comment-837945
+    if (!requestAnimationFrame || !cancelAnimationFrame) {
+        requestAnimationFrame = function(callback) {
+            var now = +Date.now(),
+                nextTime = Math.max(lastTime + 16, now);
+            return setTimeout(function() {
+                callback(lastTime = nextTime);
+            }, nextTime - now);
+        };
+
+        cancelAnimationFrame = clearTimeout;
+    }
+
+    // export to window
+    window.requestAnimationFrame = requestAnimationFrame;
+    window.cancelAnimationFrame = cancelAnimationFrame;
+}(window));
+
+},{}],20:[function(require,module,exports){
 var canny = require('canny');
+
 
 window.canny = canny;
 
-canny.add('clientShooter', require('../../dist/clientShoots.js'));
+canny.add('coverFlow', require('./js/coverFlow.js'));
+canny.add('clientShooter', require('../../dist/clientSlideShoots.js'));
 
 
 canny.ready(function () {
     "use strict";
 
 });
-},{"../../dist/clientShoots.js":1,"canny":4}],20:[function(require,module,exports){
+},{"../../dist/clientSlideShoots.js":1,"./js/coverFlow.js":19,"canny":4}],21:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4367,7 +4686,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -4392,7 +4711,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -4447,7 +4766,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var base64 = require('base64-js')
 var ieee754 = require('ieee754')
 
@@ -5442,7 +5761,7 @@ function assert (test, message) {
   if (!test) throw new Error(message || 'Failed assertion')
 }
 
-},{"base64-js":24,"ieee754":25}],24:[function(require,module,exports){
+},{"base64-js":25,"ieee754":26}],25:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -5569,7 +5888,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 }());
 
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 exports.read = function(buffer, offset, isLE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -5655,7 +5974,7 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};/*! http://mths.be/punycode v1.2.3 by @mathias */
 ;(function(root) {
 
@@ -6165,7 +6484,7 @@ var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? 
 
 }(this));
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6251,7 +6570,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6338,13 +6657,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":27,"./encode":28}],30:[function(require,module,exports){
+},{"./decode":28,"./encode":29}],31:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6418,7 +6737,7 @@ function onend() {
   });
 }
 
-},{"./readable.js":34,"./writable.js":36,"inherits":21,"process/browser.js":32}],31:[function(require,module,exports){
+},{"./readable.js":35,"./writable.js":37,"inherits":22,"process/browser.js":33}],32:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6547,9 +6866,9 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"./duplex.js":30,"./passthrough.js":33,"./readable.js":34,"./transform.js":35,"./writable.js":36,"events":20,"inherits":21}],32:[function(require,module,exports){
-module.exports=require(22)
-},{}],33:[function(require,module,exports){
+},{"./duplex.js":31,"./passthrough.js":34,"./readable.js":35,"./transform.js":36,"./writable.js":37,"events":21,"inherits":22}],33:[function(require,module,exports){
+module.exports=require(23)
+},{}],34:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6592,7 +6911,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./transform.js":35,"inherits":21}],34:[function(require,module,exports){
+},{"./transform.js":36,"inherits":22}],35:[function(require,module,exports){
 var process=require("__browserify_process");// Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7527,7 +7846,7 @@ function indexOf (xs, x) {
   return -1;
 }
 
-},{"./index.js":31,"__browserify_process":22,"buffer":23,"events":20,"inherits":21,"process/browser.js":32,"string_decoder":37}],35:[function(require,module,exports){
+},{"./index.js":32,"__browserify_process":23,"buffer":24,"events":21,"inherits":22,"process/browser.js":33,"string_decoder":38}],36:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7733,7 +8052,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./duplex.js":30,"inherits":21}],36:[function(require,module,exports){
+},{"./duplex.js":31,"inherits":22}],37:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8121,7 +8440,7 @@ function endWritable(stream, state, cb) {
   state.ended = true;
 }
 
-},{"./index.js":31,"buffer":23,"inherits":21,"process/browser.js":32}],37:[function(require,module,exports){
+},{"./index.js":32,"buffer":24,"inherits":22,"process/browser.js":33}],38:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8314,7 +8633,7 @@ function base64DetectIncompleteChar(buffer) {
   return incomplete;
 }
 
-},{"buffer":23}],38:[function(require,module,exports){
+},{"buffer":24}],39:[function(require,module,exports){
 /*jshint strict:true node:true es5:true onevar:true laxcomma:true laxbreak:true eqeqeq:true immed:true latedef:true*/
 (function () {
   "use strict";
@@ -8947,4 +9266,4 @@ function parseHost(host) {
 
 }());
 
-},{"punycode":26,"querystring":29}]},{},[19])
+},{"punycode":27,"querystring":30}]},{},[20])
