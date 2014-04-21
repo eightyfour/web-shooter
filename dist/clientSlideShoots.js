@@ -13,6 +13,21 @@ var d = dnode();
 var shooter = (function () {
     "use strict";
 
+    function getWindowDimensionfunction () {
+        var width = window.innerWidth,
+            height = window.innerHeight;
+        return {
+            w : width,
+            h : height
+        };
+    }
+
+    function centerImageContent(imgContainer) {
+        var dim = getWindowDimensionfunction();
+        var top = (dim.h / 2) - 100;
+        imgContainer.node.style.top = top + "px";
+    }
+
     function CannyMod(fc) {
         var that = this;
         this.node = null;
@@ -189,6 +204,10 @@ var shooter = (function () {
                     trade.getScreenShots(name, viewModules[name].imgContainer.createContent, function () {
                         canny.coverFlow.init(viewModules[name].imgContainer.node);
                     });
+                    centerImageContent(viewModules[name].imgContainer);
+                    window.addEventListener("deviceorientation", function () {
+                        centerImageContent(viewModules[name].imgContainer);
+                    }, true);
                 });
             }
         };

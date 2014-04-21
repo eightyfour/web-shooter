@@ -14,6 +14,21 @@ var d = dnode();
 var shooter = (function () {
     "use strict";
 
+    function getWindowDimensionfunction () {
+        var width = window.innerWidth,
+            height = window.innerHeight;
+        return {
+            w : width,
+            h : height
+        };
+    }
+
+    function centerImageContent(imgContainer) {
+        var dim = getWindowDimensionfunction();
+        var top = (dim.h / 2) - 100;
+        imgContainer.node.style.top = top + "px";
+    }
+
     function CannyMod(fc) {
         var that = this;
         this.node = null;
@@ -190,6 +205,10 @@ var shooter = (function () {
                     trade.getScreenShots(name, viewModules[name].imgContainer.createContent, function () {
                         canny.coverFlow.init(viewModules[name].imgContainer.node);
                     });
+                    centerImageContent(viewModules[name].imgContainer);
+                    window.addEventListener("deviceorientation", function () {
+                        centerImageContent(viewModules[name].imgContainer);
+                    }, true);
                 });
             }
         };
@@ -220,14 +239,6 @@ var showAsOverlay = (function () {
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
         closeBtn = domOpts.createElement('div', null, 'closeButton octicon octicon-remove-close'),
-        getWindowDimension = function () {
-            var width = window.innerWidth,
-                height = window.innerHeight;
-            return {
-                w : width,
-                h : height
-            };
-        },
         getPageHeight = function () {
             var body = document.getElementsByTagName('body')[0],
                 html = document.getElementsByTagName('html')[0];
@@ -300,6 +311,7 @@ var showAsOverlay = (function () {
         show : function (node, onClose) {
             closeCb = onClose;
             wrapper.domAppendChild(node);
+            wrapper.style.height = 'auto';
             fadeIn(wrapper, function () {
                 console.log('WRAPPER FADE IN');
                 handlePageDimensions();
@@ -320,77 +332,88 @@ var domOpts = require('dom-opts'),
 var singleOptsPanel = (function () {
     "use strict";
 
-    var panels = {
-        reShot : function (initObj, cbFuntions) {
-            // TOOD clean up container first
-            var node = domOpts.createElement('div', null, 'reShot octicon octicon-issue-reopened');
-            node.setAttribute('title', 'Take shot again: ');
-            node.addEventListener('click', function () {
-                cbFuntions.takeShot();
-            });
-            return node;
+    var getWindowDimension = function () {
+            var width = window.innerWidth,
+                height = window.innerHeight;
+            return {
+                w : width,
+                h : height
+            };
         },
-        showURL : function (conf) {
-            var p = domOpts.createElement('p', null, 'showURL'),
-                a = domOpts.createElement('a'),
-                span = domOpts.createElement('span'),
-            // TODO improve http[s] check
-                url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
-            a.setAttribute('title', 'open: ' + url);
-            a.addEventListener('click', function () {
-                window.open(url, '_blank');
-            });
-            a.innerHTML = url;
-            p.appendChild(a);
-            if (conf.desc) {
-                span.innerHTML = conf.desc;
-                p.appendChild(domOpts.createElement('br'));
-                p.appendChild(span);
-            }
-            return p;
-        },
-        linkToUrl : function (conf) {
-            var node = domOpts.createElement('div', null, 'linkToPage octicon octicon-link-external'),
-            // TODO improve http[s] check
-                url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
-            node.setAttribute('title', 'open: ' + url);
-            node.addEventListener('click', function () {
-                window.open(url, '_blank');
-            });
-            return node;
-        },
-        showBig : function (src, fileName) {
-            var node = domOpts.createElement('div', null, 'showBig octicon octicon-screen-full');
-            node.setAttribute('title', 'Show ' + fileName + ' as big peview');
-            node.addEventListener('click', function () {
-                console.log('SHOW BIG');
-                var node = domOpts.createElement('div', null, 'imgBigWrapper'),
-                    img = new Image();
-                img.src = src;
-                node.appendChild(img);
+        panels = {
+            reShot : function (initObj, cbFuntions) {
+                // TOOD clean up container first
+                var node = domOpts.createElement('div', null, 'reShot octicon octicon-issue-reopened');
+                node.setAttribute('title', 'Take shot again: ');
+                node.addEventListener('click', function () {
+                    cbFuntions.takeShot();
+                });
+                return node;
+            },
+            showURL : function (conf) {
+                var p = domOpts.createElement('p', null, 'showURL'),
+                    a = domOpts.createElement('a'),
+                    span = domOpts.createElement('span'),
+                // TODO improve http[s] check
+                    url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
+                a.setAttribute('title', 'open: ' + url);
+                a.addEventListener('click', function () {
+                    window.open(url, '_blank');
+                });
+                a.innerHTML = url;
+                p.appendChild(a);
+                if (conf.desc) {
+                    span.innerHTML = conf.desc;
+                    p.appendChild(domOpts.createElement('br'));
+                    p.appendChild(span);
+                }
+                return p;
+            },
+            linkToUrl : function (conf) {
+                var node = domOpts.createElement('div', null, 'linkToPage octicon octicon-link-external'),
+                // TODO improve http[s] check
+                    url = /http/.test(conf.url) ? conf.url : 'http://' + conf.url;
+                node.setAttribute('title', 'open: ' + url);
+                node.addEventListener('click', function () {
+                    window.open(url, '_blank');
+                });
+                return node;
+            },
+            showBig : function (src, fileName) {
+                var node = domOpts.createElement('div', null, 'showBig octicon octicon-screen-full')
+                node.setAttribute('title', 'Show ' + fileName + ' as big peview');
+                node.addEventListener('click', function () {
+                    console.log('SHOW BIG');
+                    var node = domOpts.createElement('div', null, 'imgBigWrapper'),
+                        img = new Image(),
+                        dim;
+                    img.src = src;
+                    dim = getWindowDimension();
+                    img.width = (dim.w - 60);
+                    node.appendChild(img);
 
-                if (node) {
-                    showAsOverlay.show(node, function () {
-                        console.log('CLOSE BIG');
-                        node.domRemove();
-                    });
-                }
-            });
-            return node;
-        },
-        deleteShot : function (conf, cbFuntions) {
-            var node = domOpts.createElement('div', null, 'deleteShot octicon octicon-diff-removed');
-            node.setAttribute('title', 'Delete this shot: ' + conf.url);
-            node.addEventListener('click', function () {
-                var dec = window.confirm('This shot will be deleted!\nAre you sure?');
-                if (dec) {
-                    cbFuntions.deleteShot();
-                } else {
-                    console.log('Not deleted');
-                }
-            });
-            return node;
-        }
+                    if (node) {
+                        showAsOverlay.show(node, function () {
+                            console.log('CLOSE BIG');
+                            node.domRemove();
+                        });
+                    }
+                });
+                return node;
+            },
+            deleteShot : function (conf, cbFuntions) {
+                var node = domOpts.createElement('div', null, 'deleteShot octicon octicon-diff-removed');
+                node.setAttribute('title', 'Delete this shot: ' + conf.url);
+                node.addEventListener('click', function () {
+                    var dec = window.confirm('This shot will be deleted!\nAre you sure?');
+                    if (dec) {
+                        cbFuntions.deleteShot();
+                    } else {
+                        console.log('Not deleted');
+                    }
+                });
+                return node;
+            }
     };
 
     return {
@@ -4161,8 +4184,6 @@ module.exports =  (function () {
         pressed, reference, amplitude, target, velocity, timeConstant,
         xform, frame, timestamp, ticker, view;
 
-    var focusFCs = [];
-
     var coverFlowEvent = new CustomEvent("coverFlowActive", {
             detail: {},
             bubbles: false,
@@ -4386,10 +4407,6 @@ module.exports =  (function () {
             initialize(node, obj || {});
             setupEvents();
             scroll(offset);
-        },
-        srcollToIdx : scroll,
-        onActive : function (fc) {
-            focusFCs.push(fc);
         }
     };
 }());

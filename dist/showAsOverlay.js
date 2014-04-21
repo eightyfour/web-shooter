@@ -8,14 +8,6 @@ var showAsOverlay = (function () {
 
     var wrapper = domOpts.createElement('div', 'overlayWrapper'),
         closeBtn = domOpts.createElement('div', null, 'closeButton octicon octicon-remove-close'),
-        getWindowDimension = function () {
-            var width = window.innerWidth,
-                height = window.innerHeight;
-            return {
-                w : width,
-                h : height
-            };
-        },
         getPageHeight = function () {
             var body = document.getElementsByTagName('body')[0],
                 html = document.getElementsByTagName('html')[0];
@@ -88,6 +80,7 @@ var showAsOverlay = (function () {
         show : function (node, onClose) {
             closeCb = onClose;
             wrapper.domAppendChild(node);
+            wrapper.style.height = 'auto';
             fadeIn(wrapper, function () {
                 console.log('WRAPPER FADE IN');
                 handlePageDimensions();

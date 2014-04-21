@@ -1,4 +1,4 @@
-@import "gFont/SwankyandMooMoo.css";
+@import "../gFont/SwankyandMooMoo.css";
 @font-face {
   font-family: 'octicons';
   src: url("octicons.eot");
@@ -683,20 +683,17 @@ input {
   vertical-align: middle;
   text-align: center;
   font-size: 16px;
-  font-family: 'Helvetica';
-  font-weight: 300;
 }
 .form .header {
   display: none;
 }
 .form .form {
+  font-family: 'Helvetica';
+  font-weight: 300;
   display: inline-block;
   text-align: left;
   background-color: white;
   border-radius: 2px;
-  -webkit-box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.11);
-  -moz-box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.11);
-  box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.11);
 }
 .form .section {
   width: 100%;
@@ -704,7 +701,7 @@ input {
 .form .section-inner {
   position: relative;
   width: 100%;
-  padding: 20px 20px 0px 20px;
+  padding: 0px 20px 0px 20px;
 }
 .form .section-inner:before {
   content: "";
@@ -723,6 +720,8 @@ input {
   font-size: 14px;
   font-style: italic;
   margin: 5px 0 0 0px;
+  position: relative;
+  top: 8px;
 }
 .form .section-plus {
   position: absolute;
@@ -760,6 +759,7 @@ input {
   margin-left: 10px;
   font-size: 14px;
   color: #8A8A8A;
+  display: none;
 }
 /* correct input */
 .form .section.checked .section-label:before {
@@ -767,13 +767,17 @@ input {
   width: 16px;
   height: 14px;
   display: inline-block;
-  background-image: url("../images/login/ok.png");
+  /*    background-image: url("../images/login/ok.png"); */
   background-repeat: no-repeat;
   background-position: 0px 4px;
   background-size: 14px;
 }
 /* bigger than ipad portrait */
 @media (min-width: 769px) {
+  .form .section-label {
+    position: relative;
+    top: 0;
+  }
   .form .header {
     display: inline-block;
     width: 771px;
@@ -824,6 +828,7 @@ input {
   }
   .form .section-field-desc {
     line-height: 60px;
+    display: block;
   }
   /* editing mode */
   .form .section.active {
@@ -922,7 +927,7 @@ aside {
   float: left;
 }
 #navigationController .optPanel .showURL {
-  font-size: 100%;
+  font-size: 22px;
   float: left;
   width: 100%;
   position: absolute;
