@@ -40,8 +40,8 @@ var shooter = (function () {
                     delay: delay || 0,
                     fileName: url + '.jpg',
                     category: name,
-                    srcPic : "/resources/shoots/" + name + '/' + url + '.jpg',
-                    srcBigPic : "/resources/shoots/" + name + '/big/' + url + '.jpg'
+                    srcPic : null,
+                    srcBigPic : null
                 }, main.imgContainer.createContent);
             });
         });
